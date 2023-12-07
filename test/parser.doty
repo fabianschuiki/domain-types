@@ -1,14 +1,26 @@
-mod simple() {
-    // typevar A: DomainSet;
-    // typevar B: DomainSet;
+mod simple<D, E>(x: u32 @D, y: u32 @D) {
+    typevar A;
+    typevar B;
 
-    let a: u32;
-    let b: u32;
+    let a: u32 @A;
+    let b: u32 @B;
 
-    a = b;
+    // a = b;
+
+    x = y;
 
     // let x: u32 @A;
     // let y: u32 @B;
 
     // x = y;
+
+    other(a, b);
+    add(x, y);
+
+    let i: u32;
+    let j: u32;
+    add(i, j);
 }
+
+mod other<U,V>(a: u32 @U, b: u32 @V) {}
+mod add<U>(a: u32 @U, b: u32 @U) {}

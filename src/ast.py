@@ -13,7 +13,11 @@ class WalkOrder(Enum):
 
 @dataclass
 class Binding:
-    node: AstNode
+    node: Optional[AstNode] = None
+
+    def get(self) -> AstNode:
+        assert self.node is not None
+        return self.node
 
 
 @dataclass
@@ -60,7 +64,21 @@ class Item(AstNode):
 class ModItem(Item):
     full_loc: Loc
     name: Token
+    type_vars: List[ModTypeVar]
+    args: List[ModArg]
     stmts: List[Stmt]
+
+
+@dataclass
+class ModArg(AstNode):
+    full_loc: Loc
+    name: Token
+    ty: Type
+
+
+@dataclass
+class ModTypeVar(AstNode):
+    name: Token
 
 
 #===------------------------------------------------------------------------===#
@@ -78,6 +96,12 @@ class LetStmt(Stmt):
     full_loc: Loc
     name: Token
     ty: Type
+
+
+@dataclass
+class TypeVarStmt(Stmt):
+    full_loc: Loc
+    name: Token
 
 
 @dataclass
@@ -99,12 +123,18 @@ class AssignStmt(Stmt):
 
 @dataclass
 class Type(AstNode):
-    pass
+    domain: Optional[DomainIdent]
 
 
 @dataclass
 class U32Type(Type):
     pass
+
+
+@dataclass
+class DomainIdent(AstNode):
+    binding: Binding
+    name: Token
 
 
 #===------------------------------------------------------------------------===#
@@ -120,7 +150,13 @@ class Expr(AstNode):
 @dataclass
 class IdentExpr(Expr):
     name: Token
-    binding: Optional[Binding]
+    binding: Binding
+
+
+@dataclass
+class CallExpr(Expr):
+    ident: IdentExpr
+    args: List[Expr]
 
 
 #===------------------------------------------------------------------------===#
@@ -159,7 +195,7 @@ def dump_ast(node: AstNode) -> str:
             elif isinstance(value, Token):
                 line += f" \"{value.spelling()}\""
             elif isinstance(value, Binding):
-                line += f" {name}={value.node.__class__.__name__}(@{get_id(value.node)})"
+                line += f" {name}={value.node.__class__.__name__}(@{get_id(value.get())})"
         fields = []
         for name, value in node.__dict__.items():
             fields += dump_field(name, value)

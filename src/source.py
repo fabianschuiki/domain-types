@@ -36,3 +36,9 @@ class Loc:
         offset = min(self.offset, other.offset)
         end = max(self.offset + self.length, other.offset + other.length)
         return Loc(file=self.file, offset=offset, length=end - offset)
+
+
+__all__ = [
+    "SourceFile",
+    "Loc",
+]

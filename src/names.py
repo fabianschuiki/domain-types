@@ -8,12 +8,12 @@ from src.diagnostics import *
 
 def resolve_names(root: ast.AstNode):
     resolve_node(root, Scope(parent=None))
-    # print(f"resolving names")
 
-    # for node in root.walk(ast.WalkOrder.PostOrder):
-    #     print(f"- {node.__class__.__name__}")
-
-    # pass
+    for child in root.walk(ast.WalkOrder.PreOrder):
+        for name, value in child.__dict__.items():
+            if isinstance(value, ast.Binding) and value.node is None:
+                emit_error(child.loc,
+                           f"unresolved {name} in {child.__class__.__name__}")
 
 
 def resolve_node(node: ast.AstNode, scope: Scope):
@@ -35,16 +35,24 @@ def resolve_node(node: ast.AstNode, scope: Scope):
         resolve_node(child, scope)
 
     if isinstance(node, ast.IdentExpr):
-        node.binding = resolve(scope, node.name.spelling(), node.name.loc)
-    if isinstance(node, ast.LetStmt):
+        node.binding.node = resolve(scope, node.name.spelling(), node.name.loc)
+    elif isinstance(node, ast.DomainIdent):
+        node.binding.node = resolve(scope, node.name.spelling(), node.name.loc)
+    elif isinstance(node, ast.LetStmt):
+        declare(scope, node.name.spelling(), node.name.loc, node)
+    elif isinstance(node, ast.TypeVarStmt):
+        declare(scope, node.name.spelling(), node.name.loc, node)
+    elif isinstance(node, ast.ModTypeVar):
+        declare(scope, node.name.spelling(), node.name.loc, node)
+    elif isinstance(node, ast.ModArg):
         declare(scope, node.name.spelling(), node.name.loc, node)
 
 
-def resolve(scope: Scope, name: str, name_loc: Loc) -> ast.Binding:
+def resolve(scope: Scope, name: str, name_loc: Loc) -> ast.AstNode:
     current_scope: Optional[Scope] = scope
     while current_scope:
         if node := current_scope.names.get(name):
-            return ast.Binding(node)
+            return node
         current_scope = current_scope.parent
     emit_error(name_loc, f"unknown name `{name}`")
 

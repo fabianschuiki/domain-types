@@ -6,6 +6,7 @@ from src.lexer import tokenize
 from src.parser import parse
 from src.source import *
 from src.names import resolve_names
+from src.typeck import type_check
 
 
 def main():
@@ -49,6 +50,9 @@ def main():
     if args.dump_resolved:
         print(dump_ast(root))
         return
+
+    # Type-check the AST.
+    type_check(root)
 
 
 def openSourceFile(path: str) -> SourceFile:

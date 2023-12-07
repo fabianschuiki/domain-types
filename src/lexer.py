@@ -48,6 +48,7 @@ class TokenKind(Enum):
     KW_DOMAIN = auto()
     KW_LET = auto()
     KW_MOD = auto()
+    KW_TYPEVAR = auto()
 
     EOF = auto()
 
@@ -89,6 +90,7 @@ KEYWORDS: Dict[str, TokenKind] = {
     "domain": TokenKind.KW_DOMAIN,
     "let": TokenKind.KW_LET,
     "mod": TokenKind.KW_MOD,
+    "typevar": TokenKind.KW_TYPEVAR,
 }
 
 
@@ -184,3 +186,10 @@ def tokenize_next(lex: Lexer):
 
     # If we get here, this character is not supported.
     emit_error(lex.get_loc(), f"unknown character `{lex.text[0]}`")
+
+
+__all__ = [
+    "TokenKind",
+    "Token",
+    "tokenize",
+]
