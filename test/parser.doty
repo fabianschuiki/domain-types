@@ -1,18 +1,15 @@
 mod simple<D, E>(x: u32 @D, y: u32 @D) {
+    typevar clockDomainA;
+    typevar clockDomainB;
+    let clockA: Clock<clockDomainA> = clkgen();
+    let clockB: Clock<clockDomainB> = clkgen();
+
     typevar A;
     typevar B;
-
     let a: u32 @A;
     let b: u32 @B;
 
-    // a = b;
-
     x = y;
-
-    // let x: u32 @A;
-    // let y: u32 @B;
-
-    // x = y;
 
     other(a, b);
     add(x, y);
@@ -20,7 +17,31 @@ mod simple<D, E>(x: u32 @D, y: u32 @D) {
     let i: u32;
     let j: u32;
     add(i, j);
+
+    // Some program counter.
+    let pc_next: u32;
+    let pc = reg(clockA, pc_next);
+    let const4: u32; // pretend this is the number `4`
+    pc_next = add(pc, const4);
+
+    // Some UART comms on another clock.
+    let uart1_next: u32;
+    let uart2_next: u32;
+    let uart1 = reg(clockB, uart1_next);
+    let uart2 = reg(clockB, uart2_next);
+    uart1_next = add(uart1, uart2);
+    uart2_next = xor(and(uart1, uart2), uart2);
 }
 
 mod other<U,V>(a: u32 @U, b: u32 @V) {}
-mod add<U>(a: u32 @U, b: u32 @U) {}
+
+mod add<U>(a: u32 @U, b: u32 @U) -> (z: u32 @U) {}
+mod sub<U>(a: u32 @U, b: u32 @U) -> (z: u32 @U) {}
+mod and<U>(a: u32 @U, b: u32 @U) -> (z: u32 @U) {}
+mod or <U>(a: u32 @U, b: u32 @U) -> (z: u32 @U) {}
+mod xor<U>(a: u32 @U, b: u32 @U) -> (z: u32 @U) {}
+
+mod reg<CD>(clock: Clock<CD>, d: u32 @CD) -> (q: u32 @CD) {}
+
+mod clkgen<CD>() -> (clock: Clock<CD>) {}
+mod unsafe_async<CD1, CD2>(src: u32 @CD1) -> (dst: u32 @CD2) {}

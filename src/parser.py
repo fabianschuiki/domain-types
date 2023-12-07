@@ -84,6 +84,23 @@ def parse_item(p: Parser) -> ast.Item:
                 break
         p.require(TokenKind.RPAREN)
 
+        # Parse optional return types.
+        results: List[ast.ModResult] = []
+        if p.consume_if(TokenKind.ARROW):
+            p.require(TokenKind.LPAREN)
+            while p.not_delim(TokenKind.RPAREN):
+                arg_name = p.require(TokenKind.IDENT, "result name")
+                p.require(TokenKind.COLON)
+                ty = parse_type(p)
+                results.append(
+                    ast.ModResult(loc=arg_name.loc,
+                                  full_loc=arg_name.loc | p.last_loc,
+                                  name=arg_name,
+                                  ty=ty))
+                if not p.consume_if(TokenKind.COMMA):
+                    break
+            p.require(TokenKind.RPAREN)
+
         # Parse module body.
         p.require(TokenKind.LCURLY)
         stmts: List[ast.Stmt] = []
@@ -97,6 +114,7 @@ def parse_item(p: Parser) -> ast.Item:
             name=name,
             type_vars=type_vars,
             args=args,
+            results=results,
             stmts=stmts,
         )
 
@@ -109,13 +127,18 @@ def parse_stmt(p: Parser) -> ast.Stmt:
     # Parse let bindings.
     if kw := p.consume_if(TokenKind.KW_LET):
         name = p.require(TokenKind.IDENT, "let binding name")
-        p.require(TokenKind.COLON)
-        ty = parse_type(p)
+        ty: Optional[ast.Type] = None
+        if p.consume_if(TokenKind.COLON):
+            ty = parse_type(p)
+        init: Optional[ast.Expr] = None
+        if p.consume_if(TokenKind.ASSIGN):
+            init = parse_expr(p)
         p.require(TokenKind.SEMICOLON)
         return ast.LetStmt(loc=name.loc,
                            full_loc=loc | p.last_loc,
                            name=name,
-                           ty=ty)
+                           ty=ty,
+                           init=init)
 
     # Parse type variable declarations.
     if kw := p.consume_if(TokenKind.KW_TYPEVAR):
@@ -160,6 +183,17 @@ def parse_primary_type(p: Parser) -> ast.Type:
         if token.spelling() == "u32":
             p.consume()
             return ast.U32Type(loc=token.loc, domain=None)
+        if token.spelling() == "Clock":
+            p.consume()
+            p.require(TokenKind.LT)
+            name = p.require(TokenKind.IDENT, "clock domain name")
+            domain = ast.DomainIdent(loc=name.loc,
+                                     name=name,
+                                     binding=ast.Binding())
+            p.require(TokenKind.GT)
+            return ast.ClockType(loc=token.loc | p.last_loc,
+                                 clock_domain=domain,
+                                 domain=None)
 
     emit_error(p.loc(), f"expected type, found {p.tokens[0].kind.name}")
 

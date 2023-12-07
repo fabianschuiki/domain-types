@@ -66,11 +66,19 @@ class ModItem(Item):
     name: Token
     type_vars: List[ModTypeVar]
     args: List[ModArg]
+    results: List[ModResult]
     stmts: List[Stmt]
 
 
 @dataclass
 class ModArg(AstNode):
+    full_loc: Loc
+    name: Token
+    ty: Type
+
+
+@dataclass
+class ModResult(AstNode):
     full_loc: Loc
     name: Token
     ty: Type
@@ -95,7 +103,8 @@ class Stmt(AstNode):
 class LetStmt(Stmt):
     full_loc: Loc
     name: Token
-    ty: Type
+    ty: Optional[Type]
+    init: Optional[Expr]
 
 
 @dataclass
@@ -129,6 +138,11 @@ class Type(AstNode):
 @dataclass
 class U32Type(Type):
     pass
+
+
+@dataclass
+class ClockType(Type):
+    clock_domain: DomainIdent
 
 
 @dataclass

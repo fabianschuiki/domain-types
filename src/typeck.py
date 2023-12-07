@@ -47,9 +47,16 @@ def typeck_module(ctx: Context, mod: ast.ModItem):
 
     for arg in mod.args:
         type_of(ctx, arg)
+    for result in mod.results:
+        type_of(ctx, result)
 
     for stmt in mod.stmts:
         typeck_stmt(ctx, stmt)
+
+    # Print final types.
+    for stmt in mod.stmts:
+        if isinstance(stmt, ast.LetStmt):
+            print(f"- final {stmt.name.spelling()} = {type_of(ctx, stmt)}")
 
 
 def typeck_stmt(ctx: Context, stmt: ast.Stmt):
@@ -64,7 +71,10 @@ def typeck_stmt(ctx: Context, stmt: ast.Stmt):
         type_of(ctx, stmt.expr)
 
     elif isinstance(stmt, ast.LetStmt):
-        type_of(ctx, stmt)
+        ty = type_of(ctx, stmt)
+        if stmt.ty and stmt.init:
+            init_ty = type_of(ctx, stmt.init)
+            unify_types(ctx, ty, init_ty, stmt.loc)
 
 
 def type_of(ctx: Context, node: ast.AstNode) -> Type:
@@ -81,8 +91,17 @@ def type_of_inner(ctx: Context, node: ast.AstNode) -> Type:
     # print(f"computing type of {node.__class__.__name__}")
 
     if isinstance(node, ast.LetStmt):
-        return declare_ast_type(ctx, node.ty)
+        if node.ty is not None:
+            return declare_ast_type(ctx, node.ty)
+        if node.init is not None:
+            return type_of(ctx, node.init)
+        emit_error(
+            node.loc,
+            f"unknown type: let `{node.name.spelling()}` needs either a type or an initial value"
+        )
     if isinstance(node, ast.ModArg):
+        return declare_ast_type(ctx, node.ty)
+    if isinstance(node, ast.ModResult):
         return declare_ast_type(ctx, node.ty)
 
     if isinstance(node, ast.IdentExpr):
@@ -129,7 +148,19 @@ def type_of_call(ctx: Context, call: ast.CallExpr,
         mod_ty = type_of(call_ctx, mod_arg)
         unify_types(ctx, call_ty, mod_ty, call_arg.loc)
 
-    return Type(primary=UnitType(), domain=ctx.root.get_free_variable(None))
+    if len(callee.results) == 0:
+        return Type(primary=UnitType(),
+                    domain=ctx.root.get_free_variable(None))
+
+    if len(callee.results) == 1:
+        return type_of(call_ctx, callee.results[0])
+
+    fields: Dict[str, Type] = {}
+    for mod_result in callee.results:
+        mod_ty = type_of(call_ctx, mod_result)
+        fields[mod_result.name.spelling()] = mod_ty
+    return Type(primary=NamedTupleType(fields=fields),
+                domain=ctx.root.get_free_variable(None))
 
 
 def domain_of(ctx: Context, node: ast.AstNode) -> Domain:
@@ -171,6 +202,11 @@ def declare_ast_type(ctx: Context, aty: ast.Type) -> Type:
     if isinstance(aty, ast.U32Type):
         return Type(primary=U32Type(), domain=domain)
 
+    if isinstance(aty, ast.ClockType):
+        return Type(
+            primary=ClockType(clock_domain=domain_of(ctx, aty.clock_domain)),
+            domain=domain)
+
     emit_error(aty.loc, f"invalid type")
 
 
@@ -183,10 +219,12 @@ def unify_primary_types(ctx: Context, lhs: PrimaryType, rhs: PrimaryType,
                         loc: Loc):
     if lhs == rhs:
         return
-
     if isinstance(lhs, UnitType) and isinstance(rhs, UnitType):
         return
     if isinstance(lhs, U32Type) and isinstance(rhs, U32Type):
+        return
+    if isinstance(lhs, ClockType) and isinstance(rhs, ClockType):
+        unify_domains(ctx, lhs.clock_domain, rhs.clock_domain, loc=loc)
         return
 
     emit_error(loc, f"incompatible types: `{lhs}` and `{rhs}`")
@@ -241,7 +279,7 @@ class Type:
     domain: Domain
 
     def __str__(self) -> str:
-        return f"{self.primary} @{self.domain}"
+        return f"{self.primary} @{simplify_domain(self.domain)}"
 
 
 @dataclass
@@ -261,6 +299,23 @@ class U32Type(PrimaryType):
 
     def __str__(self) -> str:
         return "u32"
+
+
+@dataclass
+class ClockType(PrimaryType):
+    clock_domain: Domain
+
+    def __str__(self) -> str:
+        return f"Clock<{simplify_domain(self.clock_domain)}>"
+
+
+@dataclass
+class NamedTupleType(PrimaryType):
+    fields: Dict[str, Type]
+
+    def __str__(self) -> str:
+        return "(" + ", ".join(f"{name}: {ty}"
+                               for name, ty in self.fields.items()) + ")"
 
 
 @dataclass

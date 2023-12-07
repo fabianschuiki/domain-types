@@ -35,6 +35,7 @@ class TokenKind(Enum):
     COLON = auto()
     SEMICOLON = auto()
     AT = auto()
+    ARROW = auto()
 
     EQ = auto()
     NE = auto()
@@ -84,6 +85,7 @@ SYMBOLS2: Dict[str, TokenKind] = {
     "!=": TokenKind.NE,
     "<=": TokenKind.LE,
     ">=": TokenKind.GE,
+    "->": TokenKind.ARROW,
 }
 
 KEYWORDS: Dict[str, TokenKind] = {
