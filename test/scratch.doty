@@ -1,0 +1,43 @@
+mod simple<CD1, CD2, A, B>(clockA: Clock<CD1>, clockB: Clock<CD2>, a: u32 @A, b: u32 @B) {
+    let pc_next: u32;
+    let pc = reg(clockA, pc_next);
+    let FOUR: u32;
+    pc_next = add(pc, FOUR);
+
+    let uart_next: u32;
+    let uart = reg(clockB, uart_next);
+    let bla: u32;
+    uart_next = xor(uart, unsafe_async(pc));
+}
+
+mod add<D>(lhs: u32 @D, rhs: u32 @D) -> (z: u32 @D) {}
+mod xor<D>(lhs: u32 @D, rhs: u32 @D) -> (z: u32 @D) {}
+mod reg<CD>(clock: Clock<CD>, d: u32 @CD) -> (q: u32 @CD) {}
+mod unsafe_async<A,B>(src: u32 @A) -> (dst: u32 @B) {}
+
+domain ClockDomain;
+domain PowerDomain;
+domain ResetDomain;
+
+domain DerivedClockDomain : ClockDomain {
+    src: ClockDomain;
+};
+
+domain RationalClockDomain : DerivedClockDomain {
+    ratio: Rational;
+};
+
+
+mod cdc<T, A: ClockDomain, B: ClockDomain, R>(
+    src_clock: Clock<A>,
+    src: T @{A,R},
+    dst_clock: Clock<B>
+) -> (
+    dst: T @{B,R}
+) {
+    comptime if src_clock.is_instance<RationalClockDomain>() {
+        // mesochronous
+    } else {
+        // asynchronous
+    }
+}

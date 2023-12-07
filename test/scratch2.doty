@@ -1,0 +1,37 @@
+// mod simple<A,B,C>(a: u32 @A, b: u32 @B, c: u32 @C) {
+//     add(add(a, async(b)), c);
+// }
+
+mod core<CA,CB>(clock: Clock<CA>, clock2: Clock<CB>) {
+    let pc = pc_subsystem(clock);
+    let uart = uart_subsystem(clock2, pc);
+}
+
+mod pc_subsystem<C>(clock: Clock<C>) -> (pc: u32 @C) {
+    let pc_next: u32;
+    let pc = reg(clock, pc_next);
+    let bla: u32;
+    pc_next = add(pc, bla);
+}
+
+mod uart_subsystem<C>(clock: Clock<C>, pc: u32 @C) -> (uart: u32 @C) {
+    let uart_next: u32;
+    let uart = reg(clock, uart_next);
+    let bla2: u32;
+    uart_next = xor(uart, pc);
+}
+
+mod add<U>(a: u32 @U, b: u32 @U) -> (c: u32 @U) {}
+mod xor<U>(a: u32 @U, b: u32 @U) -> (c: u32 @U) {}
+mod async<U,V>(src: u32 @U) -> (dst: u32 @V) {}
+
+mod reg<CD>(clock: Clock<CD>, d: u32 @CD) -> (q: u32 @CD) {}
+
+mod cdc<A: ClockDomain, B: ClockDomain>(src @A) -> (dst @B) {
+    static if B.isinstance(RationalDomain(A)) {
+        // rational crossing / pseudosynchronous
+        // mesochronous
+    } else {
+        // asynchronous
+    }
+}
